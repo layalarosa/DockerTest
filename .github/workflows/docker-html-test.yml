@@ -1,0 +1,43 @@
+name: Docker HTML Test
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  test-container:
+    name: Build and test Docker container
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t dockertest-html .
+
+      - name: Run Docker container
+        run: docker run -d --name dockertest-html -p 8080:80 dockertest-html
+
+      - name: Wait for Nginx
+        run: |
+          for attempt in {1..10}; do
+            if curl --fail --silent http://localhost:8080 > page.html; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs dockertest-html
+          exit 1
+
+      - name: Verify test HTML
+        run: |
+          grep -q "<h1>DockerTest</h1>" page.html
+          grep -q "contenedor Docker" page.html
+
+      - name: Stop Docker container
+        if: always()
+        run: docker stop dockertest-html
