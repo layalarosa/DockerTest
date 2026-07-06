@@ -1,0 +1,14 @@
+services:
+  api:
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - ./api/src:/app/src
+    command: ["node", "--watch", "src/index.js"]
+
+  web:
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./index.html:/usr/share/nginx/html/index.html:ro

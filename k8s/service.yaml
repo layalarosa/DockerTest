@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dockertest-web
+  labels:
+    app: docker-test
+    tier: web
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: docker-test
+    tier: web
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dockertest-api
+  labels:
+    app: docker-test
+    tier: api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
+  selector:
+    app: docker-test
+    tier: api

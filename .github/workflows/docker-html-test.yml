@@ -7,37 +7,102 @@ on:
       - master
   pull_request:
 
-jobs:
-  test-container:
-    name: Build and test Docker container
-    runs-on: ubuntu-latest
+env:
+  WEB_PORT: 8080
+  API_PORT: 3000
 
+jobs:
+  lint:
+    name: Lint and validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Validate docker-compose
+        run: docker compose config
+
+  build-and-test:
+    name: Build and test
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker images
+        run: docker compose build
+
+      - name: Start services
+        run: |
+          docker compose up -d
+          echo "Waiting for services to be healthy..."
+          sleep 10
+
+      - name: Test API health endpoint
+        run: |
+          for attempt in {1..10}; do
+            if curl --fail --silent http://localhost:${{ env.WEB_PORT }}/api/health > api-health.json; then
+              echo "API is healthy"
+              cat api-health.json
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Test API info endpoint
+        run: |
+          response=$(curl --fail --silent http://localhost:${{ env.WEB_PORT }}/api/info)
+          echo "$response"
+          echo "$response" | jq -e '.app == "DockerTest API"' || exit 1
+
+      - name: Test API message endpoint
+        run: |
+          response=$(curl --fail --silent http://localhost:${{ env.WEB_PORT }}/api/message)
+          echo "$response"
+          echo "$response" | jq -e '.message' || exit 1
+
+      - name: Test static HTML page
+        run: |
+          curl --fail --silent http://localhost:${{ env.WEB_PORT }}/ > page.html
+          grep -q "<h1>DockerTest</h1>" page.html
+          grep -q "contenedor Docker" page.html
+
+      - name: Test metrics endpoint
+        run: |
+          curl --fail --silent http://localhost:${{ env.WEB_PORT }}/api/metrics | grep -q "http_request_duration_seconds"
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
+
+  security-scan:
+    name: Security scan
+    needs: build-and-test
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t dockertest-html .
+        run: docker build -t dockertest-web .
 
-      - name: Run Docker container
-        run: docker run -d --name dockertest-html -p 8080:80 dockertest-html
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: dockertest-web
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
 
-      - name: Wait for Nginx
-        run: |
-          for attempt in {1..10}; do
-            if curl --fail --silent http://localhost:8080 > page.html; then
-              exit 0
-            fi
-            sleep 2
-          done
-          docker logs dockertest-html
-          exit 1
-
-      - name: Verify test HTML
-        run: |
-          grep -q "<h1>DockerTest</h1>" page.html
-          grep -q "contenedor Docker" page.html
-
-      - name: Stop Docker container
+      - name: Upload Trivy results to GitHub
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
-        run: docker stop dockertest-html
+        with:
+          sarif_file: trivy-results.sarif

@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dockertest-web
+  labels:
+    app: docker-test
+    tier: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: docker-test
+      tier: web
+  template:
+    metadata:
+      labels:
+        app: docker-test
+        tier: web
+    spec:
+      containers:
+        - name: web
+          image: docker-test-web:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "64m"
+              memory: "64Mi"
+            limits:
+              cpu: "256m"
+              memory: "128Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dockertest-api
+  labels:
+    app: docker-test
+    tier: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: docker-test
+      tier: api
+  template:
+    metadata:
+      labels:
+        app: docker-test
+        tier: api
+    spec:
+      containers:
+        - name: api
+          image: docker-test-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "3000"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "128m"
+              memory: "128Mi"
+            limits:
+              cpu: "512m"
+              memory: "256Mi"

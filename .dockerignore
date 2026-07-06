@@ -2,4 +2,12 @@
 .gitignore
 node_modules
 Dockerfile
-docker-compose.yml
+docker-compose*.yml
+nginx/nginx.conf
+api/Dockerfile
+k8s/
+monitoring/
+.github/
+Makefile
+README.md
+*.md

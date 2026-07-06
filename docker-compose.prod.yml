@@ -1,0 +1,8 @@
+services:
+  api:
+    environment:
+      - NODE_ENV=production
+    restart: always
+
+  web:
+    restart: always
