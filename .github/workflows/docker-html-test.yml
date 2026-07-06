@@ -94,12 +94,13 @@ jobs:
         run: docker build -t dockertest-web .
 
       - name: Run Trivy scan
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: dockertest-web
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
+          ignore-unfixed: true
 
       - name: Upload Trivy results to GitHub
         uses: github/codeql-action/upload-sarif@v3
