@@ -86,6 +86,8 @@ jobs:
     name: Security scan
     needs: build-and-test
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -103,7 +105,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy results to GitHub
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-results.sarif
